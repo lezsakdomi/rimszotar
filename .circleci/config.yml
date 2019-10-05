@@ -4,7 +4,7 @@ jobs:
     docker:
       - image: buildpack-deps
     steps:
-      - run: git clone https://github.com/laszlonemeth/magyarispell.git .
+      - run: git clone https://github.com/lezsakdomi/magyarispell.git .
       - run:
           name: Populate output/
           command: |
