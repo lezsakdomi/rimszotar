@@ -3061,7 +3061,7 @@ pbkdf2@^3.0.3:
 
 pcre2@lezsakdomi/pcre2:
   version "0.0.4"
-  resolved "https://codeload.github.com/lezsakdomi/pcre2/tar.gz/daf4db3e7603a43e366e2525493fc0441959fa53"
+  resolved "https://codeload.github.com/lezsakdomi/pcre2/tar.gz/272c4df550b86d101fcaccd560aca69f75ac302d"
   dependencies:
     bindings "~1.2.1"
     nan "^2.4.0"
