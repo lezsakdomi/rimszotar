@@ -4,7 +4,7 @@ jobs:
     docker:
       - image: buildpack-deps
     steps:
-      - run: apt-get update && apt-get install recode hunspell m4 awk
+      - run: apt-get update && apt-get install recode hunspell m4 gawk
       - run: git clone https://github.com/lezsakdomi/magyarispell.git .
       - run:
           name: Populate output/
