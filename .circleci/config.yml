@@ -1,0 +1,73 @@
+version: 2.1
+jobs:
+  build_dictionaries:
+    docker:
+      - image: buildpack-deps
+    steps:
+      - run: git clone https://github.com/laszlonemeth/magyarispell.git && cd magyarispell
+      - run:
+          name: Populate output/
+          command: |
+              [ ! -f szotar.konf.bak ] && mv szotar.konf{,.bak}
+              mkdir output
+              [ ! -e tmp ] || rm -r tmp
+              for f in szotar/*; do
+                sz="$(basename $f)"
+                echo -e "\033[1mGenerating output for \033[32m$sz\033[0;1m...\033[0m"
+                echo $f >szotar.konf
+                make myspell
+                make hu_HU_gen.wordlist
+
+                mkdir output/$sz
+                mv hu_HU* output/$sz/
+
+                rm -r tmp
+              done
+              mv hu_HU* output/
+              mv szotar.konf{.bak,}
+      - store_artifacts:
+          path: output
+          destination: myspell
+      - run: mv output dictionaries
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dictionaries/*.wordlist
+            - dictionaries/*/*.wordlist
+  build_app:
+    docker:
+      - image: buildpack-deps
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-rimszotar-node_modules-{{ arch }}-{{ checksum "package.json" }}-{{ checksum "yarn.lock" }}
+            - v1-rimszotar-node_modules-{{ arch }}-{{ checksum "package.json" }}-
+            - v1-rimszotar-node_modules-{{ arch }}-
+      - run: yarn install
+      - save_cache:
+          paths:
+            - node_modules/
+          key: v1-rimszotar-node_modules-{{ arch }}-{{ checksum "package.json" }}-{{ checksum "yarn.lock" }}
+      - persist_to_workspace:
+          root: .
+          paths:
+            - '*'
+  build_container:
+    docker:
+      - image: docker
+    steps:
+      - attach_workspace:
+          at: .
+      - run: docker build . -f Dockerfile.norun
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build_dictionaries
+      - build_app
+      - build_container:
+          requires:
+            - build_dictionaries
+            - build_app
