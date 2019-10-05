@@ -36,7 +36,7 @@ jobs:
             - dictionaries/*/*.wordlist
   build_app:
     docker:
-      - image: buildpack-deps
+      - image: node:lts
     steps:
       - checkout
       - restore_cache:
