@@ -67,6 +67,7 @@ jobs:
       - run:
           name: Install Heroku
           command: curl https://cli-assets.heroku.com/install.sh | sh
+      - setup_remote_docker
       - run: heroku container:login
       - setup_remote_docker
       - attach_workspace:
