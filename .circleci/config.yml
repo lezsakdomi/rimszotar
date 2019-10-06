@@ -5,7 +5,7 @@ jobs:
       - image: buildpack-deps
     steps:
       - run: apt-get update && apt-get install -yqq recode m4 gawk
-      - run: git clone https://github.com/nemethl/magyarispell.git .
+      - run: git clone https://github.com/laszlonemeth/magyarispell.git .
       - run:
           name: Populate output/*/
           command: |
