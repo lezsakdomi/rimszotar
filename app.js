@@ -295,7 +295,13 @@ apiRouter.post('/words', async (req, res, next) => {
             if (word === "ancien}") continue // todo magyarispell-issue
 
             try {
-                if (filters.every(f => f(word, aff, po, b, b_po))) {
+                let passed = true
+                for (let filter of filters) {
+                    passed = filter(word, aff, po, b, b_po)
+                    if (!passed) break
+                }
+
+                if (passed) {
                     words.push(word)
                 }
             } catch (e) {
