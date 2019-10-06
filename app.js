@@ -189,8 +189,8 @@ apiRouter.post('/words', async (req, res, next) => {
 
                             wasConsonant = false
                         } else {
-                            if (wasConsonant && rhythm[rhythm.length - 1] === 'u') {
-                                rhythm[rhythm.length - 1] = '-'
+                            if (wasConsonant && rhythm.slice(-1) === 'u') {
+                                rhythm = rhythm.slice(0, -1) + '-'
                             }
 
                             wasConsonant = true
