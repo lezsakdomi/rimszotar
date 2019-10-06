@@ -61,18 +61,18 @@ jobs:
             - '*'
   deploy_heroku:
     docker:
-      - image: ubuntu
+      - image: alpine
     steps:
-      - run: apt update && apt install -yqq curl gnupg2
+      - run: apk add curl bash docker nodejs
       - run:
           name: Install Heroku
-          command: curl https://cli-assets.heroku.com/install-ubuntu.sh | sh
+          command: curl https://cli-assets.heroku.com/install.sh | sh
       - setup_remote_docker
       - attach_workspace:
           at: .
       - run:
           name: Build Dockerfile.web
-          command: docker build -f Dockerfile.web
+          command: docker build . -f Dockerfile.web
       - deploy:
           name: Deploy to Heroku
           command: heroku container:push web
