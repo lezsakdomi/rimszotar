@@ -75,7 +75,7 @@ jobs:
           command: docker build . -f Dockerfile.web
       - deploy:
           name: Deploy to Heroku
-          command: heroku container:push web -a rimszotar
+          command: heroku container:push web --recursive --app rimszotar
 
 workflows:
   version: 2
