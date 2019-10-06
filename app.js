@@ -94,7 +94,8 @@ apiRouter.post('/words', async (req, res, next) => {
             }
 
             function getPatternMatcher(filter) {
-                return mm.matcher(filter.pattern, filter)
+                const matcher = mm.matcher(filter.pattern, filter)
+                return (word) => matcher(word)
             }
 
             function getRhythm(word, aff, po, b) {
