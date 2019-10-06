@@ -3,6 +3,8 @@ const expressVue = require('express-vue')
 const bodyParser = require('body-parser')
 const fs = require("fs")
 const readline = require("readline")
+const latin2 = require('iso-8859-2')
+const entities = require('html-entities').AllHtmlEntities
 const mm = require("micromatch")
 const {PCRE2JIT} = require('pcre2')
 
@@ -64,9 +66,9 @@ apiRouter.post('/words', async (req, res, next) => {
                     break
 
                 case "rhythm":
-                    filters[i] = (f => word => {
+                    filters[i] = (f => (...args) => {
 
-                        const rhythm = getRhythm(word)
+                        const rhythm = getRhythm(...args)
 
                         return f(rhythm.toLowerCase()) || f(rhythm.toUpperCase())
 
@@ -90,7 +92,12 @@ apiRouter.post('/words', async (req, res, next) => {
                 return mm.matcher(filter.pattern, filter)
             }
 
-            function getRhythm(word) {
+            function getRhythm(word, aff, po, b) {
+
+                if (b && b.startsWith("ph:")) {
+                    word = b.slice(3).replace(/\*$/, '')
+                }
+
                 word = word.replace(/&\w+;/g, '')
                     .normalize('NFKD')
                     .replace("ł", "l")
@@ -105,7 +112,17 @@ apiRouter.post('/words', async (req, res, next) => {
                     const character = word.charAt(i)
                     const charCode = word.charCodeAt(i)
 
-                    if (character.match(/['0-9()!,+ .-]/)) {
+                    if (character.match(/[§!‰μ€°%$]/)) {
+
+                        finalizeLetter(letter)
+                        letter = beginLetter(letters, i)
+
+                        letter.characters = character
+                        letter.unknown = true
+
+                        letter = beginLetter(letters, i + 1)
+
+                    } else if (character.match(/['0-9(),+ .–-]/)) {
 
                         if (letter.characters.length) {
                             finalizeLetter(letter)
@@ -133,7 +150,8 @@ apiRouter.post('/words', async (req, res, next) => {
 
                     } else {
 
-                        throw new Error(`Failed to process character 0x${charCode.toString(16)} ('${character}')`)
+                        throw new Error(`Failed to process character 0x${charCode.toString(16)} ` +
+                            `('${character}') in word "${word}"`)
 
                     }
 
@@ -152,7 +170,11 @@ apiRouter.post('/words', async (req, res, next) => {
                 {
                     let wasConsonant = false
                     for (let letter of letters) {
-                        if (letter.vowel) {
+                        if (letter.unknown) {
+
+                            rhythm += 'x'
+
+                        } else if (letter.vowel) {
                             if (letter.long) {
                                 rhythm += '-'
                             } else {
@@ -161,7 +183,7 @@ apiRouter.post('/words', async (req, res, next) => {
 
                             wasConsonant = false
                         } else {
-                            if (wasConsonant) {
+                            if (wasConsonant && rhythm[rhythm.length - 1] === 'u') {
                                 rhythm[rhythm.length - 1] = '-'
                             }
 
@@ -186,7 +208,9 @@ apiRouter.post('/words', async (req, res, next) => {
                 }
 
                 function finalizeLetter(letter) {
-                    letter.vowel = abc.find(abcLetter => abcLetter.letter === letter.characters).vowel
+
+                    const abcLetter = abc.find(abcLetter => abcLetter.letter === letter.characters) || {}
+                    letter.vowel = abcLetter.vowel
 
                     if (letter.vowel) {
                         if ([...letter.diacritics].some(Array.prototype.includes.bind([
@@ -206,6 +230,16 @@ apiRouter.post('/words', async (req, res, next) => {
             }
         }
 
+        filters.unshift((word, aff, po) => po !== 'punct', word => ![
+            "{", "}",
+            "[", "]",
+            "#", "@", "=",
+            "?", "??", "???",
+            "!", "!!", "!!!",
+            ",", ":", ";",
+            "/", "\"",
+        ].includes(word))
+
         if (dictionary.match(/\.\./)) {
             res.status(403).end("Invalid dictionary")
             return
@@ -217,45 +251,48 @@ apiRouter.post('/words', async (req, res, next) => {
             return
         }
 
-        const wordlist = await fs.promises.readdir(dictionaryPath)
-            .then(files => files.find(file => file.match(/\.wordlist$/)))
+        const dic = await fs.promises.readdir(dictionaryPath)
+            .then(files => files.find(file => file.match(/\.dic$/)))
 
-        const wordlistPath = `dictionaries/${dictionary}/${wordlist}`
-        if (await fs.promises.access(wordlistPath, fs.constants.R_OK).then(() => false, () => true)) {
-            res.status(404).end("Wordlist for given dictionary is not accessible")
+        const dicPath = `dictionaries/${dictionary}/${dic}`
+        if (await fs.promises.access(dicPath, fs.constants.R_OK).then(() => false, () => true)) {
+            res.status(404).end("Database for given dictionary is not accessible")
             return
         }
 
         const words = []
         const rl = readline.createInterface({
-            input: fs.createReadStream(wordlistPath, 'utf8'),
+            input: fs.createReadStream(dicPath, 'binary'),
         })
 
+        let firstLine = true
         for await (let line of rl) {
-            // unmunch fails
-            if (line.match(/^\w+:[^\s]/)) continue
-            if (line.match(/^:/)) continue
-            if (line.match(/\w+}$/)) continue
-            if (line.match(/\w+\*$/)) continue
+            if (firstLine) {
+                firstLine = false
+                continue
+            }
 
-            // unwanted "words"
-            if (line.match(/^[[\]#-](?=\t|$)/)) continue
-            if (line.match(/^%/)) continue
-            if (line.match(/\bpo:punct\b/)) continue
+            line = latin2.decode(line)
 
-            const matches = /^[^\/\s](?:[ -]?[^\/\s]\.?)*/.exec(line)
-            if (!matches) continue
-            let [word] = matches
+            // ^(?!$|(\[(noun2?|vrb|adj(_num)?|adv|con|poss|prv|noun_?morfo)\])?(([a-zöüóőúéáűíëA-ZÖÜÓŐÚÉÁŰÍŁČŠ0-9 _.!?:,;"()\[\]{}+'=$@#%-]|&[a-zA-Z]+;)+)(/|(\t([a-zöüóőúéáűíëA-ZÖÜÓŐÚÉÁŰÍ]*)(\[(noun |vrb |adj )\](\+\[[^\]]+]\](\{(\+\[(NOM|PRES_INDIC_INDEF_SG_3)\])*\})?)?)?)?$))
+            //                      po         word                      aff            b               b_po
+            const matches = /^(?:\[([^[\]]+)])?((?:[^\/\t\\]|\\\/)*)(?:\/([^\t]*))?(?:\t([^\[\t]+)?(?:\[([^\]]+)])?)?/.exec(line)
+            if (!matches) {
+                throw new Error(`Invalid entry in dictionary: ${line} (${dic})`)
+            }
+            let [, po, word, aff, b, b_po] = matches
 
-            word = word.replace(/''/g, "'")
+            word = entities.decode(word)
 
-            if (filters.every(f => f(word))) {
+            if (word.includes("|")) continue // todo magyarispell-issue
+
+            if (filters.every(f => f(word, aff, po, b, b_po))) {
                 words.push(word)
             }
         }
 
         res.header('Content-Type', "application/json")
-        res.end(JSON.stringify({dictionary, wordlist, words}))
+        res.end(JSON.stringify({dictionary, wordlist: dic, words}))
     } catch (e) {
         console.error(e)
         next(e)
