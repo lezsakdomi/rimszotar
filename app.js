@@ -308,7 +308,7 @@ apiRouter.post('/words', async (req, res, next) => {
         }
 
         res.header('Content-Type', "application/json")
-        res.end(JSON.stringify({dictionary, wordlist: dic, words}))
+        res.end(JSON.stringify({dictionary, wordlist: dic, words, errors}))
     } catch (e) {
         console.error(e)
         next(e)
