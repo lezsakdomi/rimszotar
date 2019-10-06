@@ -23,6 +23,11 @@ for (let letter of consonants) {
         vowel: false,
     })
 }
+abc.push({
+    letter: "œ",
+    vowel: true,
+    long: true,
+})
 
 const app = express()
 module.exports.app = app
@@ -112,7 +117,7 @@ apiRouter.post('/words', async (req, res, next) => {
                     const character = word.charAt(i)
                     const charCode = word.charCodeAt(i)
 
-                    if (character.match(/[§!‰μ€°%$]/)) {
+                    if (character.match(/[§!‰μ€°%$α-ω]/)) {
 
                         finalizeLetter(letter)
                         letter = beginLetter(letters, i)
@@ -172,7 +177,7 @@ apiRouter.post('/words', async (req, res, next) => {
                     for (let letter of letters) {
                         if (letter.unknown) {
 
-                            rhythm += 'x'
+                            rhythm += '?'
 
                         } else if (letter.vowel) {
                             if (letter.long) {
@@ -261,6 +266,8 @@ apiRouter.post('/words', async (req, res, next) => {
         }
 
         const words = []
+        const errors = []
+
         const rl = readline.createInterface({
             input: fs.createReadStream(dicPath, 'binary'),
         })
@@ -285,9 +292,18 @@ apiRouter.post('/words', async (req, res, next) => {
             word = entities.decode(word)
 
             if (word.includes("|")) continue // todo magyarispell-issue
+            if (word === "ancien}") continue // todo magyarispell-issue
 
-            if (filters.every(f => f(word, aff, po, b, b_po))) {
-                words.push(word)
+            try {
+                if (filters.every(f => f(word, aff, po, b, b_po))) {
+                    words.push(word)
+                }
+            } catch (e) {
+                if (process.env.VUE_DEV) {
+                    console.error(e)
+                }
+
+                errors.push(e)
             }
         }
 
