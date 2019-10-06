@@ -28,7 +28,6 @@ jobs:
           name: Populate output/ (default)
           command: |
             make myspell
-            make hu_HU.wordlist
             mv hu_HU* output/
             rm -r tmp
       - store_artifacts:
