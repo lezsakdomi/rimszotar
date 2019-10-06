@@ -267,11 +267,38 @@ apiRouter.get('/dictionaries', (req, res, next) => {
         if (err) {
             next(err)
         } else {
-            res.send({
-                dictionaries: files
-                    .filter(file => file.isDirectory())
-                    .map(file => file.name)
-            })
+            Promise.all(files
+                .filter(file => file.isDirectory())
+                .map(file => fs.promises.readFile(`dictionaries/${file.name}/LEIRAS.txt`, 'utf8') // todo latin2
+                    .catch(() => "")
+                    .then(leiras => {
+                        const details = {}
+
+                        let k, v
+                        for (let line of leiras.split('\n')) {
+                            if (!line.length) break
+
+                            if (line.match(/^.+: /)) {
+                                [k, v] = line.split(": ", 2)
+                            } else {
+                                v = line
+                            }
+
+                            if (details.hasOwnProperty(k)) {
+                                details[k] += '\n' + v
+                            } else {
+                                details[k] = v
+                            }
+                        }
+
+                        return {[file.name]: details}
+                    }),
+                ),
+            ).then(
+                a => a.reduce((a, v) => Object.assign(a, v), {}),
+            ).then(dictionaries => {
+                res.send({dictionaries})
+            }, next)
         }
     })
 })

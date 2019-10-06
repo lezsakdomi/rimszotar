@@ -8,9 +8,33 @@
             <label>Dictionary:</label>
             <select v-if="dictionaries" v-model="formData.dictionary" title="Dictionary" @keypress="handleKeypress">
                 <option value="">Default</option>
-                <option v-for="dictionary of dictionaries" :value="dictionary">{{ dictionary }}</option>
+                <option v-for="dictionary of Object.keys(dictionaries)" :value="dictionary">
+                    {{ dictionaries[dictionary]['Név'] || dictionary }}
+                </option>
             </select>
             <input v-else v-model="formData.dictionary" title="Dictionary" @keypress="handleKeypress"/>
+
+            <p v-if="selectedDictionary['Szavak száma']">
+                <b>{{ selectedDictionary['Szavak száma'] }}</b> words in the dictionary
+            </p>
+
+            <p v-if="selectedDictionary['Felelős']">
+                Credits to
+                <a v-if="selectedDictionary['Felelős'].match(/^([^<>]*) <([^<>]*@[^<>]*)>$/)"
+                   v-text="/^([^<>]*) <([^<>]*@[^<>]*)>$/.exec(selectedDictionary['Felelős'])[1]"
+                   :href="/^([^<>]*) <([^<>]*@[^<>]*)>$/.exec(selectedDictionary['Felelős'])[2]"/>
+                <i v-else>{{ selectedDictionary['Felelős'] }}</i>.
+            </p>
+
+            <p v-if="selectedDictionary['Forrás']">
+                Source: <i>{{ selectedDictionary['Forrás'] }}</i>.
+            </p>
+
+            <p v-if="selectedDictionary['Leírás']">
+                {{ selectedDictionary['Leírás'] }}
+            </p>
+
+            <pre v-if="selectedDictionary['Megjegyzés']" v-text="selectedDictionary['Megjegyzés']"/>
 
             <h2>Filters:</h2>
             <div v-for="filter in formData.filters" class="filter">
@@ -228,6 +252,10 @@
                     return "about:blank"
                 }
 
+            },
+
+            selectedDictionary() {
+                return this.dictionaries && this.dictionaries[this.formData.dictionary] || {}
             },
 
         },

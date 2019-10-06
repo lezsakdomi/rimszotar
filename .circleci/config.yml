@@ -20,6 +20,7 @@ jobs:
                 make hu_HU.wordlist
                 mkdir output/$sz
                 mv hu_HU* output/$sz/
+                cp szotar/$sz/*.txt output/$sz/
 
                 rm -r tmp
               done
