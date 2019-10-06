@@ -59,13 +59,23 @@ jobs:
           root: .
           paths:
             - '*'
-  build_container:
+  deploy_heroku:
     docker:
-      - image: docker
+      - image: ubuntu
     steps:
+      - run: apt update && apt install -yqq curl gnupg2
+      - run:
+          name: Install Heroku
+          command: curl https://cli-assets.heroku.com/install-ubuntu.sh | sh
+      - setup_remote_docker
       - attach_workspace:
           at: .
-      - run: docker build . -f Dockerfile.norun
+      - run:
+          name: Build Dockerfile.web
+          command: docker build -f Dockerfile.web
+      - deploy:
+          name: Deploy to Heroku
+          command: heroku container:push web
 
 workflows:
   version: 2
@@ -73,7 +83,7 @@ workflows:
     jobs:
       - build_dictionaries
       - build_app
-      - build_container:
+      - deploy_heroku:
           requires:
             - build_dictionaries
             - build_app
