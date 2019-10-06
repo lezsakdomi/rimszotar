@@ -267,13 +267,11 @@ apiRouter.get('/dictionaries', (req, res, next) => {
         if (err) {
             next(err)
         } else {
-            Promise.all(files.filter(file => file.isDirectory())
-                .map(file => fs.promises.access(`dictionaries/${file.name}/LEIRAS.txt`)
-                    .then(() => {
-                        return fs.promises.readFile(`dictionaries/${file.name}.txt`)
-                            .then()
-                    }, () => ({}))))
-            res.send({dictionaries})
+            res.send({
+                dictionaries: files
+                    .filter(file => file.isDirectory())
+                    .map(file => file.name)
+            })
         }
     })
 })
